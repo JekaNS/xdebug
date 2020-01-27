@@ -323,7 +323,7 @@ More .INIs  : " , (function_exists(\'php_ini_scanned_files\') ? str_replace("\n"
 		'session' => array('session.auto_start=0'),
 		'tidy' => array('tidy.clean_output=0'),
 		'zlib' => array('zlib.output_compression=Off'),
-		'xdebug' => array('xdebug.default_enable=0','xdebug.remote_enable=0'),
+		'xdebug' => array('xdebug.default_enable=0','xdebug.remote_enable=0','xdebug.remote_log_level=20'),
 		'mbstring' => array('mbstring.func_overload=0'),
 	);
 
@@ -1623,7 +1623,11 @@ TEST $file
 
 			junit_start_timer($shortname);
 
-			$output = system_with_timeout("$extra $php $pass_options $extra_options -q $ini_settings $no_file_cache -d display_errors=0 \"$test_skipif\"", $env);
+			/* Remove auto prepend and append settings for SKIPIF */
+			$skipif_ini_settings = $ini_settings;
+			$skipif_ini_settings = preg_replace( '@-d \"auto_prepend_file=.*?\" @', '', $skipif_ini_settings );
+			$skipif_ini_settings = preg_replace( '@-d \"auto_append_file=.*?\" @', '', $skipif_ini_settings );
+			$output = system_with_timeout("$extra $php $pass_options $extra_options -q $skipif_ini_settings $no_file_cache -d display_errors=0 \"$test_skipif\"", $env);
 
 			junit_finish_timer($shortname);
 
@@ -2412,12 +2416,12 @@ function settings2params(&$ini_settings)
 				$settings .= " -d \"$name=$val\"";
 			}
 		} else {
-			if (substr(PHP_OS, 0, 3) == "WIN" && !empty($value) && $value{0} == '"') {
+			if (substr(PHP_OS, 0, 3) == "WIN" && !empty($value) && is_string($value) && $value[0] == '"') {
 				$len = strlen($value);
 
-				if ($value{$len - 1} == '"') {
-					$value{0} = "'";
-					$value{$len - 1} = "'";
+				if ($value[$len - 1] == '"') {
+					$value[0] = "'";
+					$value[$len - 1] = "'";
 				}
 			} else {
 				$value = addslashes($value);
